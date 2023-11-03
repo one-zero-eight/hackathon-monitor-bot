@@ -1,0 +1,32 @@
+actions:
+  restart_db:
+    title: Restart DB
+    description: Restarts database with checkpoint
+    steps:
+      - type: sql
+        query: CHECKPOINT
+      - type: ssh
+        query: service postgresql restart
+
+alerts:
+  cpu_usage:
+    title: Использование CPU
+    description: 'Нагрузка CPU была выше 90% за последние 10 секунд'
+    severity: 50
+    rule:
+      alert: CPUUsage
+      expr: avg_over_time(node_cpu{mode="idle"}[10s]) < 10
+      for: 10s
+    suggested_actions:
+      - restart_db
+    related_graphs:
+      - cpu_usage
+
+graphs:
+  cpu_usage:
+    title: CPU Usage
+    grafana_url: https://abcd.example/some-graph/?options=123
+
+views:
+  pg_stat_activity:
+    query: SELECT * FROM pg_stat_activity;
