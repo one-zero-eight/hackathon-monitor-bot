@@ -1,16 +1,26 @@
 import { z } from "zod"
 
 const ZConfig = z.object({
-  botToken: z.string(),
+  bot: z.object({
+    token: z.string(),
+    webAppUrls: z.object({
+      views: z.string(),
+      actionArgs: z.string(),
+    }),
+  }),
 
   api: z.object({
     baseUrl: z.string(),
     token: z.string(),
   }),
 
-  queryWebAppUrl: z.string(),
-  runCommandArgumentsFormWebAppUrl: z.string(),
-  whiteListTelegramIds: z.array(z.number()),
+  alerts: z.object({
+    alertsPerSecond: z.number(),
+    noAlertsIntervalMs: z.number(),
+    errorRetryIntervalMs: z.number(),
+  }),
+
+  whitelistTelegramIds: z.array(z.number()),
 })
 
 type Config = z.infer<typeof ZConfig>

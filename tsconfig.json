@@ -4,8 +4,12 @@
     "target": "esnext",
     "lib": ["ESNext"],
     "moduleDetection": "force",
+    "baseUrl": "./",
     "module": "esnext",
     "moduleResolution": "bundler",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "types": ["bun-types"],
     "allowImportingTsExtensions": true,
     "allowJs": true,

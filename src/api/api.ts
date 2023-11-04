@@ -4,64 +4,44 @@ import {
   RequestError,
   ResultParseError,
 } from "./errors"
-import type { GetActionParams, GetActionsParams, GetAlertDeliveriesParams, GetAlertParams, GetQueriesParams, MarkAlertDeliveredParams, RunActionParams } from "./schemas"
-import { ZAction, ZAlert, ZGetActionsResult, ZGetAlertDeliveriesResult, ZGetQueriesResult, ZGetStatActivityResult } from "./schemas"
+import type {
+  GetActionParams,
+  GetAlertParams,
+  MarkAlertDeliveredParams,
+  RunActionParams,
+} from "./schemas"
+import {
+  ZAction,
+  ZAlert,
+  ZGetActionsResult,
+  ZGetAlertDeliveriesResult,
+  ZGetViewsResult,
+} from "./schemas"
+import type { Logger } from "@/logger"
 
 export type MonitoringApiOptions = {
+  logger: Logger
   baseUrl: string
   token: string
 }
 
 export class MonitoringApi {
+  #logger: Logger
   #baseUrl: string
   #token: string
 
   constructor(options: MonitoringApiOptions) {
+    this.#logger = options.logger
     this.#baseUrl = options.baseUrl.endsWith("/")
       ? options.baseUrl.slice(0, -1)
       : options.baseUrl
     this.#token = options.token
   }
 
-  public getStatActivity() {
-    return this.query({
-      path: "pg/pg-stat-activity",
-      method: "GET",
-      resultSchema: ZGetStatActivityResult,
-    })
-  }
-
-  public registerUser({
-    id,
-    firstName,
-    lastName,
-    username,
-  }: {
-    id: number
-    firstName: string
-    lastName: string | null
-    username: string | null
-  }) {
-    return this.query({
-      path: "users/register-via-telegram",
-      method: "POST",
-      data: {
-        telegram_id: id,
-        telegram_first_name: firstName,
-        telegram_last_name: lastName,
-        telegram_username: username,
-      },
-    })
-  }
-
-  public getActions(_params: GetActionsParams) {
+  public getActions() {
     return this.query({
       path: "actions",
       method: "GET",
-      // data: {
-      //   skip: params.skip,
-      //   take: params.take,
-      // },
       resultSchema: ZGetActionsResult,
     })
   }
@@ -84,25 +64,18 @@ export class MonitoringApi {
     })
   }
 
-  public getQueries(_params: GetQueriesParams) {
+  public getViews() {
     return this.query({
-      path: "queries",
+      path: "views",
       method: "GET",
-      // data: {
-      //   skip: params.skip,
-      //   take: params.take,
-      // },
-      resultSchema: ZGetQueriesResult,
+      resultSchema: ZGetViewsResult,
     })
   }
 
-  public getAlertDeliveries(params: GetAlertDeliveriesParams) {
+  public getAlertDeliveries() {
     return this.query({
       path: "alerts/delivery",
       method: "GET",
-      data: {
-        age: params.age,
-      },
       resultSchema: ZGetAlertDeliveriesResult,
     })
   }
@@ -121,7 +94,7 @@ export class MonitoringApi {
       data: {
         alert_id: params.alertId,
         receivers: params.receiversTelegramIds,
-        age: -1,
+        // age: -1,
       },
       method: "POST",
     })
@@ -138,6 +111,7 @@ export class MonitoringApi {
     data?: any
     resultSchema?: Z
   }): Promise<z.infer<Z>> {
+    // Prepare options.
     let url = `${this.#baseUrl}/${path}`
     let body
     if (data && method === "GET") {
@@ -150,18 +124,24 @@ export class MonitoringApi {
       body = JSON.stringify(data)
     }
 
+    const options: FetchRequestInit = {
+      method,
+      body,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${this.#token}`,
+      },
+    }
+
+    // Perform request.
     let result
+    this.#logger.info(
+      `Outgoing HTTP request: [${options.method}] ${url}\n`,
+      JSON.stringify({ ...options, method: undefined }),
+    )
     try {
-      const response = await fetch(url, {
-        method,
-        body,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.#token}`,
-        },
-      })
+      const response = await fetch(url, options)
       if (!response.ok) {
-        console.error("req err", await response.json())
         throw new RequestError(`Request failed with status ${response.status}`)
       }
       result = await response.json()
@@ -173,6 +153,7 @@ export class MonitoringApi {
       }
     }
 
+    // Validate and parse result.
     if (resultSchema) {
       const parseResult = resultSchema.safeParse(result)
       if (parseResult.success) {

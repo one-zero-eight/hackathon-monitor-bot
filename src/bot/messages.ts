@@ -1,6 +1,6 @@
-import type { Action, Alert } from "./api"
-import createTextTable from "./utils/createTextTable"
-import escapeHtml from "./utils/escapeHtml"
+import type { Action, Alert } from "@/api"
+import createTextTable from "@/utils/createTextTable"
+import escapeHtml from "@/utils/escapeHtml"
 
 export function pgStatActivitySummary(data: {
   success: true
@@ -43,8 +43,8 @@ export function actionDetails(action: Action) {
 
 export const start = `Доступные команды:
 
-/actions - список действий
-/queries - список запросов
+/actions - список сценариев
+/views - список представлений
 /graphs - список графиков`
 
 export function alert(alert: Alert): string {
@@ -69,3 +69,6 @@ export function alert(alert: Alert): string {
 
   return lines.join("\n")
 }
+
+export const actionsList = "Выберите сценарий:"
+export const viewsList = "Выберите представление:"

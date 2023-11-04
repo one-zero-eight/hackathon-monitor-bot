@@ -1,7 +1,7 @@
 {
   "name": "bot",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "",
   "license": "MIT",
   "keywords": [],
@@ -9,18 +9,17 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
   "dependencies": {
     "@grammyjs/parse-mode": "^1.8.1",
     "@grammyjs/runner": "^2.0.3",
+    "consola": "^3.2.3",
     "grammy": "^1.19.2",
     "zod": "^3.22.4"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^1.1.0",
     "bun-types": "latest",
-    "eslint": "^8.52.0"
+    "eslint": "^8.52.0",
+    "typescript": "^5.2.2"
   }
 }

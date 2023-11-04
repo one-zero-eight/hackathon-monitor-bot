@@ -1,44 +1,40 @@
-import process from "node:process"
-
-import type { Context } from "grammy"
-import { Bot, InlineKeyboard, Keyboard } from "grammy"
+import { z } from "zod"
+import type { Api, Context, RawApi } from "grammy"
+import { Bot, InlineKeyboard } from "grammy"
 import { parseMode } from "@grammyjs/parse-mode"
-import { run } from "@grammyjs/runner"
 
-import * as msg from "./messages"
-import type { Action, Query } from "./api"
-import { MonitoringApi, ZRunActionWebAppData } from "./api"
-import { loadConfig } from "./config"
-import { startAlertDelivery } from "./deliver_alerts"
+import type { Action, MonitoringApi, View } from "./api"
+import type { Logger } from "./logger"
+import * as msg from "@/bot/messages"
 
-const ACTIONS_PAGE_SIZE = 10
-const QUERIES_PAGE_SIZE = 10
+export const ZRunActionWebAppData = z.object({
+  actionId: z.string(),
+  arguments: z.record(z.string(), z.any()),
+})
 
-// TODO: implement pagination
-async function sendActionsMessage({
-  ctx,
+export async function sendActionsMessage({
+  messageText,
+  botApi,
   chatId,
   editMessageId,
   actions,
-  pageNo: _pageNo,
 }: {
-  ctx: Context
+  messageText: string
+  botApi: Api<RawApi>
   chatId: string | number
   editMessageId?: number
   actions: Action[]
-  pageNo: number
 }) {
-  const messageText = "Вот список доступных действий:"
   const keyboard = new InlineKeyboard()
   actions.forEach((action, i) => {
-    if (i > 0 && i % 2 === 0) {
+    if (i > 0) {
       keyboard.row()
     }
     keyboard.text(action.title, `action:${action.alias}`)
   })
 
   if (editMessageId) {
-    await ctx.api.editMessageText(
+    await botApi.editMessageText(
       chatId,
       editMessageId,
       messageText,
@@ -47,7 +43,7 @@ async function sendActionsMessage({
       },
     )
   } else {
-    await ctx.api.sendMessage(
+    await botApi.sendMessage(
       chatId,
       messageText,
       {
@@ -57,29 +53,27 @@ async function sendActionsMessage({
   }
 }
 
-// TODO: implement pagination
-async function sendQueriesMessage({
+async function sendViews({
+  messageText,
   ctx,
   chatId,
   editMessageId,
-  queries,
-  getQueryWebAppUrl,
-  pageNo: _pageNo,
+  views,
+  getViewWebAppUrl,
 }: {
+  messageText: string
   ctx: Context
   chatId: string | number
   editMessageId?: number
-  queries: Query[]
-  getQueryWebAppUrl: (query: Query) => string
-  pageNo: number
+  views: View[]
+  getViewWebAppUrl: (query: View) => string
 }) {
-  const messageText = "Вот список доступных запросов:"
   const keyboard = new InlineKeyboard()
-  queries.forEach((query, i) => {
-    if (i > 0 && i % 2 === 0) {
+  views.forEach((view, i) => {
+    if (i > 0) {
       keyboard.row()
     }
-    keyboard.webApp(query.title, getQueryWebAppUrl(query))
+    keyboard.webApp(view.title, getViewWebAppUrl(view))
   })
 
   if (editMessageId) {
@@ -131,34 +125,42 @@ async function runAction({
   )
 }
 
-async function main() {
-  const config = await loadConfig()
+export type CreateBotOptions = {
+  botToken: string
+  logger: Logger
+  api: MonitoringApi
+  whitelistTelegramIds: number[]
+  viewsWebAppUrl: string
+  actionArgsWebAppUrl: string
+}
 
-  const api = new MonitoringApi(config.api)
-
-  const bot = new Bot(config.botToken)
+export function createBot({
+  botToken,
+  logger,
+  api,
+  whitelistTelegramIds,
+  viewsWebAppUrl,
+  actionArgsWebAppUrl,
+}: CreateBotOptions): Bot {
+  const bot = new Bot(botToken)
   bot.api.config.use(parseMode("HTML"))
 
-  await bot.api.setMyCommands([
-    { command: "actions", description: "список действий" },
-    { command: "queries", description: "список запросов" },
-    { command: "graphs", description: "список графиков" },
-  ])
-
-  bot.catch(console.error)
+  bot.catch((error) => {
+    logger.error("Unhandled error in middleware:", error)
+  })
 
   /////////////////////////////////////////////////////////////////////////////
 
   // Log updates
   bot.use((ctx, next) => {
-    console.log(JSON.stringify(ctx.update))
+    logger.info("Incoming update:\n", JSON.stringify(ctx.update))
     return next()
   })
 
   // Protect bot from unauthorized users
   bot.use((ctx, next) => {
     const userId = ctx.from?.id
-    if (!userId || !config.whiteListTelegramIds.includes(userId)) {
+    if (!userId || !whitelistTelegramIds.includes(userId)) {
       return ctx.reply("You shall not pass.")
     }
     return next()
@@ -169,12 +171,12 @@ async function main() {
   })
 
   bot.command("actions", async (ctx) => {
-    const actions = await api.getActions({ take: ACTIONS_PAGE_SIZE, skip: 0 })
+    const actions = await api.getActions()
     await sendActionsMessage({
-      ctx,
+      messageText: msg.actionsList,
+      botApi: ctx.api,
       chatId: ctx.chat.id,
       actions,
-      pageNo: 1,
     })
   })
 
@@ -209,7 +211,7 @@ async function main() {
         actionId,
         args: argumentsEncoded,
       })
-      const url = `${config.runCommandArgumentsFormWebAppUrl}?${queryParam}`
+      const url = `${actionArgsWebAppUrl}?${queryParam}`
       await ctx.reply(
         "Введите аргументы действия:",
         {
@@ -248,35 +250,23 @@ async function main() {
   bot.callbackQuery("actions", async (ctx) => {
     ctx.answerCallbackQuery()
     await sendActionsMessage({
-      ctx,
+      messageText: msg.actionsList,
+      botApi: ctx.api,
       editMessageId: ctx.callbackQuery.message?.message_id,
       chatId: ctx.callbackQuery.from.id,
-      actions: await api.getActions({ take: ACTIONS_PAGE_SIZE, skip: 0 }),
-      pageNo: 1,
+      actions: await api.getActions(),
     })
   })
 
-  bot.command("queries", async (ctx) => {
-    // const queries = await api.getQueries({
-    //   skip: 0,
-    //   take: QUERIES_PAGE_SIZE,
-    // })
-
-    // await sendQueriesMessage({
-    //   ctx,
-    //   chatId: ctx.chat.id,
-    //   queries,
-    //   getQueryWebAppUrl: (query) => `${config.queryWebAppUrl}?id=${query.id}`,
-    //   pageNo: 1,
-    // })
-    await ctx.reply(
-      "Список доступных таблиц:",
-      {
-        reply_markup: new InlineKeyboard([
-          [{ text: "pg_stat_activity", web_app: { url: `${config.queryWebAppUrl}/activity` } }],
-        ]),
-      },
-    )
+  bot.command("views", async (ctx) => {
+    const views = await api.getViews()
+    await sendViews({
+      ctx,
+      chatId: ctx.chat.id,
+      messageText: msg.viewsList,
+      views,
+      getViewWebAppUrl: (query) => `${viewsWebAppUrl}/${query.alias}`,
+    })
   })
 
   bot.on("message:web_app_data", async (ctx) => {
@@ -293,24 +283,5 @@ async function main() {
     })
   })
 
-  /////////////////////////////////////////////////////////////////////////////
-
-  const runner = run(bot)
-
-  // Add signal handlers to gracefully shutdown the bot
-  const stopRunner = () => runner.isRunning() && runner.stop()
-  process.once("SIGINT", stopRunner)
-  process.once("SIGTERM", stopRunner)
-
-  runner.task()
-  startAlertDelivery({
-    api,
-    bot,
-    alertsPerSecond: 0.5,
-    alertsAgeSeconds: 3600,
-    noAlertsIntervalMs: 5000,
-    errorRetryIntervalMs: 3000,
-  })
+  return bot
 }
-
-main()

@@ -1,17 +1,4 @@
-import { number, z } from "zod"
-
-export const ZBackendStat = z.object({
-  pid: z.number(),
-  state: z.string().nullish(),
-})
-export type BackendStat = z.infer<typeof ZBackendStat>
-
-export const ZGetStatActivityResult = z.object({
-  meta: z.object({
-    total_backends_count: z.number(),
-  }),
-  backends: z.array(ZBackendStat),
-})
+import { z } from "zod"
 
 export const ZAction = z.object({
   alias: z.string(),
@@ -21,10 +8,6 @@ export const ZAction = z.object({
 })
 export type Action = z.infer<typeof ZAction>
 
-export type GetActionsParams = {
-  take: number
-  skip: number
-}
 export const ZGetActionsResult = z.array(ZAction)
 
 export type GetActionParams = {
@@ -36,27 +19,15 @@ export type RunActionParams = {
   arguments?: Record<string, any>
 }
 
-export const ZQuery = z.object({
-  id: z.string(),
+export const ZView = z.object({
+  alias: z.string(),
   title: z.string(),
   description: z.string().nullish(),
 })
-export type Query = z.infer<typeof ZQuery>
+export type View = z.infer<typeof ZView>
 
-export type GetQueriesParams = {
-  take: number
-  skip: number
-}
-export const ZGetQueriesResult = z.array(ZQuery)
+export const ZGetViewsResult = z.array(ZView)
 
-export const ZRunActionWebAppData = z.object({
-  actionId: z.string(),
-  arguments: z.record(z.string(), z.any()),
-})
-
-export type GetAlertDeliveriesParams = {
-  age: number
-}
 export const ZAlertDelivery = z.object({
   alert_id: z.number(),
   receiver_id: z.number(),
