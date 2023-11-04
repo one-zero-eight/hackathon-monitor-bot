@@ -56,16 +56,16 @@ export async function startAlertDelivery({
             && alert.suggested_actions.length > 0
           ) {
             // Send suggestion actions
-            const actions = await api.getActions({ skip: 0, take: 100 })
+            const actions = await api.getActions()
             const actionsToSuggest = actions.filter((action) =>
               alert.suggested_actions.includes(action.alias),
             )
             if (actionsToSuggest.length > 0) {
               await sendActionsMessage({
+                messageText: msg.suggestedActions,
                 botApi: bot.api,
                 chatId: delivery.receiver_id,
                 actions: actionsToSuggest,
-                pageNo: 1,
               })
             }
           }

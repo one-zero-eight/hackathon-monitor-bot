@@ -72,3 +72,5 @@ export function alert(alert: Alert): string {
 
 export const actionsList = "Выберите сценарий:"
 export const viewsList = "Выберите представление:"
+
+export const suggestedActions = "Рекомендуемые действия:"
