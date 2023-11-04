@@ -7,6 +7,10 @@ const ZConfig = z.object({
     baseUrl: z.string(),
     token: z.string(),
   }),
+
+  queryWebAppUrl: z.string(),
+  runCommandArgumentsFormWebAppUrl: z.string(),
+  whiteListTelegramIds: z.array(z.number()),
 })
 
 type Config = z.infer<typeof ZConfig>

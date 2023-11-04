@@ -4,7 +4,8 @@ import {
   RequestError,
   ResultParseError,
 } from "./errors"
-import { ZGetStatActivityResult } from "./schemas"
+import type { GetActionParams, GetActionsParams, GetAlertDeliveriesParams, GetAlertParams, GetQueriesParams, MarkAlertDeliveredParams, RunActionParams } from "./schemas"
+import { ZAction, ZAlert, ZGetActionsResult, ZGetAlertDeliveriesResult, ZGetQueriesResult, ZGetStatActivityResult } from "./schemas"
 
 export type MonitoringApiOptions = {
   baseUrl: string
@@ -53,6 +54,79 @@ export class MonitoringApi {
     })
   }
 
+  public getActions(_params: GetActionsParams) {
+    return this.query({
+      path: "actions",
+      method: "GET",
+      // data: {
+      //   skip: params.skip,
+      //   take: params.take,
+      // },
+      resultSchema: ZGetActionsResult,
+    })
+  }
+
+  public getAction(params: GetActionParams) {
+    return this.query({
+      path: `actions/${params.id}`,
+      method: "GET",
+      resultSchema: ZAction,
+    })
+  }
+
+  public runAction(params: RunActionParams) {
+    return this.query({
+      path: `actions/execute/${params.actionId}`,
+      data: {
+        arguments: params.arguments,
+      },
+      method: "POST",
+    })
+  }
+
+  public getQueries(_params: GetQueriesParams) {
+    return this.query({
+      path: "queries",
+      method: "GET",
+      // data: {
+      //   skip: params.skip,
+      //   take: params.take,
+      // },
+      resultSchema: ZGetQueriesResult,
+    })
+  }
+
+  public getAlertDeliveries(params: GetAlertDeliveriesParams) {
+    return this.query({
+      path: "alerts/delivery",
+      method: "GET",
+      data: {
+        age: params.age,
+      },
+      resultSchema: ZGetAlertDeliveriesResult,
+    })
+  }
+
+  public getAlert(params: GetAlertParams) {
+    return this.query({
+      path: `alerts/by-id/${params.id}`,
+      method: "GET",
+      resultSchema: ZAlert,
+    })
+  }
+
+  public markAlertDelivered(params: MarkAlertDeliveredParams) {
+    return this.query({
+      path: "alerts/finish",
+      data: {
+        alert_id: params.alertId,
+        receivers: params.receiversTelegramIds,
+        age: -1,
+      },
+      method: "POST",
+    })
+  }
+
   private async query<Z extends z.ZodType = z.ZodVoid>({
     path,
     method,
@@ -64,22 +138,34 @@ export class MonitoringApi {
     data?: any
     resultSchema?: Z
   }): Promise<z.infer<Z>> {
+    let url = `${this.#baseUrl}/${path}`
+    let body
+    if (data && method === "GET") {
+      const searchParams = new URLSearchParams()
+      for (const [key, value] of Object.entries(data)) {
+        searchParams.append(key, `${value}`)
+      }
+      url = `${url}?${searchParams.toString()}`
+    } else if (data) {
+      body = JSON.stringify(data)
+    }
+
     let result
     try {
-      const response = await fetch(`${this.#baseUrl}/${path}`, {
+      const response = await fetch(url, {
         method,
-        body: data === undefined ? undefined : JSON.stringify(data),
+        body,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${this.#token}`,
         },
       })
       if (!response.ok) {
+        console.error("req err", await response.json())
         throw new RequestError(`Request failed with status ${response.status}`)
       }
       result = await response.json()
     } catch (err) {
-      console.error(err)
       if (err instanceof Error) {
         throw new NetworkError(err.message, { cause: err })
       } else {
