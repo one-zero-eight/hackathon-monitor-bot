@@ -73,6 +73,7 @@ export function createBot({
   bot.use(mw.start)
   bot.use(mw.actions)
   bot.use(mw.views)
+  bot.use(mw.graphs)
 
   return bot
 }

@@ -6,6 +6,7 @@ const ZConfig = z.object({
     webAppUrls: z.object({
       view: z.string(),
       action: z.string(),
+      graph: z.string(),
     }),
   }),
 

@@ -36,6 +36,7 @@ export const messages = {
 
   actionsList: "Выберите сценарий:",
   viewsList: "Выберите представление:",
+  graphsList: "Выберите дашборд графиков:",
 
   runAction: "Запустить сценарий",
   suggestedActions: "Рекомендуемые сценарии:",
@@ -71,5 +72,9 @@ export const messages = {
     message += "\n\nВыберите базу данных:"
 
     return message
+  },
+
+  chooseTargetForGraph: (graph: string) => {
+    return `Выберите базу данных для графика <b>${escapeHtml(graph)}</b>:`
   },
 }

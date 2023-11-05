@@ -1,6 +1,6 @@
 import type { Bot } from "grammy"
 
-import type { AlertDelivery, MonitoringApi } from "./api"
+import type { MonitoringApi } from "./api"
 import sleepMs from "./utils/sleepMs"
 import { messages } from "./bot/messages"
 import { sendActionsMessage } from "./bot/sendActionsMessage"
@@ -25,80 +25,74 @@ export async function startAlertDelivery({
   errorRetryIntervalMs,
 }: StartAlertsDeliveryOptions) {
   let lastAlertSentAt: number = Number.NEGATIVE_INFINITY
-  let deliveriesQueue: AlertDelivery[] = []
 
   while (true) {
     try {
-      while (deliveriesQueue.length > 0) {
-        const sendAlertInMs = getSleepTimeInMs(alertsPerSecond, lastAlertSentAt)
-        if (sendAlertInMs >= 0) {
-          await sleepMs(sendAlertInMs)
-        }
+      const deliveries = await api.getAlertDeliveries()
+      logger.info(`Got ${deliveries.length} new deliveries`)
 
-        const delivery = deliveriesQueue.shift()!
-
-        const alert = await api.getAlert({ id: delivery.alert_id })
-
-        let sent
-        try {
-          await bot.api.sendMessage(
-            delivery.receiver_id,
-            messages.alert(alert),
-          )
-          sent = true
-        } catch (err) {
-          sent = false
-          logger.error("Failed to send alert:", err)
-        }
-
-        try {
-          if (
-            alert.status !== "resolved"
-            && alert.suggested_actions.length > 0
-          ) {
-            // Send suggestion actions
-            const actions = await api.getActions()
-            const actionsToSuggest = actions.filter((action) =>
-              alert.suggested_actions.includes(action.alias),
-            )
-            if (actionsToSuggest.length > 0) {
-              await sendActionsMessage({
-                messageText: messages.suggestedActions,
-                botApi: bot.api,
-                chatId: delivery.receiver_id,
-                actions: actionsToSuggest,
-                targetDbId: alert.target_alias,
-              })
-            }
-          }
-        } catch (err) {
-          logger.error("Failed to send suggested actions:", err)
-        }
-
-        lastAlertSentAt = performance.now()
-        if (sent) {
-          await api.markAlertDelivered({
-            alertId: delivery.alert_id,
-            receiversTelegramIds: [delivery.receiver_id],
-          })
-        } else {
-          // TODO
-        }
+      if (deliveries.length === 0) {
+        await sleepMs(noAlertsIntervalMs)
+        continue
       }
 
-      const newDeliveries = await api.getAlertDeliveries()
-      logger.info(`Got ${newDeliveries.length} new deliveries`)
-      deliveriesQueue.push(...newDeliveries)
+      for (const delivery of deliveries) {
+        for (const receiverId of delivery.receivers) {
+          const sendAlertInMs = getSleepTimeInMs(alertsPerSecond, lastAlertSentAt)
+          if (sendAlertInMs >= 0) {
+            await sleepMs(sendAlertInMs)
+          }
 
-      // If we've sent all the alerts and do not have more,
-      // then sleep for a while.
-      if (deliveriesQueue.length === 0) {
-        await sleepMs(noAlertsIntervalMs)
+          let sent
+          try {
+            await bot.api.sendMessage(
+              receiverId,
+              messages.alert(delivery),
+            )
+            sent = true
+          } catch (err) {
+            sent = false
+            logger.error("Failed to send alert:", err)
+          }
+
+          try {
+            if (
+              delivery.status !== "resolved"
+              && delivery.suggested_actions.length > 0
+            ) {
+              // Send suggestion actions
+              const actions = await api.getActions()
+              const actionsToSuggest = actions.filter((action) =>
+                delivery.suggested_actions.includes(action.alias),
+              )
+              if (actionsToSuggest.length > 0) {
+                await sendActionsMessage({
+                  messageText: messages.suggestedActions,
+                  botApi: bot.api,
+                  chatId: receiverId,
+                  actions: actionsToSuggest,
+                  targetDbId: delivery.target_alias,
+                })
+              }
+            }
+          } catch (err) {
+            logger.error("Failed to send suggested actions:", err)
+          }
+
+          lastAlertSentAt = performance.now()
+          if (sent) {
+            await api.markAlertDelivered({
+              alertId: delivery.id,
+              receiversTelegramIds: [receiverId],
+            })
+          } else {
+            // TODO: mark as failed or delivered to avoid infinite retries
+          }
+        }
       }
     } catch (err) {
       logger.error("Failed to deliver alerts:", err)
       await sleepMs(errorRetryIntervalMs)
-      deliveriesQueue = []
     }
   }
 }

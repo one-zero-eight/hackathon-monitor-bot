@@ -33,16 +33,6 @@ export type GetViewParams = {
   id: string
 }
 
-export const ZAlertDelivery = z.object({
-  alert_id: z.number(),
-  receiver_id: z.number(),
-  delivered: z.boolean(),
-})
-
-export type AlertDelivery = z.infer<typeof ZAlertDelivery>
-
-export const ZGetAlertDeliveriesResult = z.array(ZAlertDelivery)
-
 export type GetAlertParams = {
   id: number
 }
@@ -68,9 +58,17 @@ export const ZAlert = z.object({
   status: ZAlertStatus,
   severity: ZAlertSeverity,
   suggested_actions: z.array(z.string()).default(() => []),
-  related_graphs: z.array(z.string()).default(() => []),
+  related_views: z.array(z.string()).default(() => []),
 })
 export type Alert = z.infer<typeof ZAlert>
+
+export const ZAlertDelivery = ZAlert.merge(z.object({
+  receivers: z.array(z.number()),
+}))
+
+export type AlertDelivery = z.infer<typeof ZAlertDelivery>
+
+export const ZGetAlertDeliveriesResult = z.array(ZAlertDelivery)
 
 export type MarkAlertDeliveredParams = {
   alertId: number
