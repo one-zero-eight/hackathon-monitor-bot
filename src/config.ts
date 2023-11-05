@@ -4,8 +4,8 @@ const ZConfig = z.object({
   bot: z.object({
     token: z.string(),
     webAppUrls: z.object({
-      views: z.string(),
-      actionArgs: z.string(),
+      view: z.string(),
+      action: z.string(),
     }),
   }),
 
@@ -20,10 +20,21 @@ const ZConfig = z.object({
     errorRetryIntervalMs: z.number(),
   }),
 
-  whitelistTelegramIds: z.array(z.number()),
+  access: z.object({
+    /**
+     * Users with these Telegram IDs will always have access to the bot.
+     */
+    whitelistTelegramIds: z.array(z.number()).default(() => []),
+
+    /**
+     * Users that are not in the whitelist initially, can be added to it
+     * by starting the bot with the secret key (/start <secretKey>).
+     */
+    secretKey: z.string().nullish(),
+  }),
 })
 
-type Config = z.infer<typeof ZConfig>
+export type Config = z.infer<typeof ZConfig>
 
 export async function loadConfig(): Promise<Config> {
   const file = Bun.file("config.json")

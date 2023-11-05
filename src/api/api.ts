@@ -7,6 +7,7 @@ import {
 import type {
   GetActionParams,
   GetAlertParams,
+  GetViewParams,
   MarkAlertDeliveredParams,
   RunActionParams,
 } from "./schemas"
@@ -15,7 +16,9 @@ import {
   ZAlert,
   ZGetActionsResult,
   ZGetAlertDeliveriesResult,
+  ZGetTargetDbsResult,
   ZGetViewsResult,
+  ZView,
 } from "./schemas"
 import type { Logger } from "@/logger"
 
@@ -56,10 +59,8 @@ export class MonitoringApi {
 
   public runAction(params: RunActionParams) {
     return this.query({
-      path: `actions/execute/${params.actionId}`,
-      data: {
-        arguments: params.arguments,
-      },
+      path: `actions/execute/${params.actionId}?target_alias=${params.targetDbId}`,
+      data: params.arguments ?? {},
       method: "POST",
     })
   }
@@ -69,6 +70,14 @@ export class MonitoringApi {
       path: "views",
       method: "GET",
       resultSchema: ZGetViewsResult,
+    })
+  }
+
+  public getView(params: GetViewParams) {
+    return this.query({
+      path: `views/${params.id}`,
+      method: "GET",
+      resultSchema: ZView,
     })
   }
 
@@ -97,6 +106,14 @@ export class MonitoringApi {
         // age: -1,
       },
       method: "POST",
+    })
+  }
+
+  public getTargetDbs() {
+    return this.query({
+      path: "pg/targets",
+      method: "GET",
+      resultSchema: ZGetTargetDbsResult,
     })
   }
 
@@ -141,10 +158,10 @@ export class MonitoringApi {
     )
     try {
       const response = await fetch(url, options)
-      if (!response.ok) {
-        throw new RequestError(`Request failed with status ${response.status}`)
-      }
       result = await response.json()
+      if (!response.ok) {
+        throw new RequestError(`Request failed with status ${response.status}, ${JSON.stringify(result)}`)
+      }
     } catch (err) {
       if (err instanceof Error) {
         throw new NetworkError(err.message, { cause: err })

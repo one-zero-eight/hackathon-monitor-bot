@@ -6,7 +6,7 @@ import { MonitoringApi } from "./api"
 import { loadConfig } from "./config"
 import { createLogger } from "./logger"
 import { startAlertDelivery } from "./deliver_alerts"
-import { createBot } from "./bot"
+import { createBot } from "./bot/bot"
 
 async function main() {
   const config = await loadConfig()
@@ -17,20 +17,17 @@ async function main() {
     token: config.api.token,
   })
   const bot = createBot({
-    botToken: config.bot.token,
     logger: logger.withTag("Bot"),
     api: monitoringApi,
-    whitelistTelegramIds: config.whitelistTelegramIds,
-    viewsWebAppUrl: config.bot.webAppUrls.views,
-    actionArgsWebAppUrl: config.bot.webAppUrls.actionArgs,
+    config,
   })
 
   logger.start("Testing Bot API token...")
   const botUsername = (await bot.api.getMe()).username
-  logger.box(`Bot: https://t.me/${botUsername}`)
+  logger.box(`→ https://t.me/${botUsername} ←`)
 
   await bot.api.setMyCommands([
-    { command: "actions", description: "список действий" },
+    { command: "actions", description: "список сценариев" },
     { command: "views", description: "список представлений" },
     { command: "graphs", description: "список графиков" },
   ])

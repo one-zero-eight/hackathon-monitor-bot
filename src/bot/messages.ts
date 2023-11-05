@@ -1,40 +1,75 @@
-import type { Action, Alert } from "@/api"
+import type { Action, Alert, View } from "@/api"
 import escapeHtml from "@/utils/escapeHtml"
 
-export function actionDetails(action: Action) {
-  return `Действие: <b>${escapeHtml(action.title)}</b>${action.description ? `\n\nОписание: ${escapeHtml(action.description)}` : ""}`
-}
+export const messages = {
+  accessDenied: "🙈",
 
-export const start = `Доступные команды:
+  start: `Доступные команды:
 
-/actions - список сценариев
-/views - список представлений
-/graphs - список графиков`
+/actions - сценарии
+/views - представления
+/graphs - графики`,
 
-export function alert(alert: Alert): string {
-  const lines = []
+  alert: (alert: Alert): string => {
+    const lines = []
 
-  if (alert.status === "resolved") {
-    lines.push(`Проблема устранена: <b>${escapeHtml(alert.title)}</b> ✅`)
-  } else {
-    const emoji = alert.severity === "warning"
-      ? "⚠️"
-      : "🚨"
-    lines.push(`${emoji} <b>${escapeHtml(alert.title)}</b> ${emoji}`)
-  }
+    if (alert.status === "resolved") {
+      lines.push(`Проблема устранена: <b>${escapeHtml(alert.title)}</b> ✅`)
+    } else {
+      const emoji = alert.severity === "warning"
+        ? "⚠️"
+        : "🚨"
+      lines.push(`${emoji} <b>${escapeHtml(alert.title)}</b> ${emoji}`)
+    }
 
-  lines.push("")
-  lines.push(`Время: ${alert.timestamp.toISOString()}`)
-
-  if (alert.description) {
     lines.push("")
-    lines.push(escapeHtml(alert.description))
-  }
+    lines.push(`База данных: <u>${escapeHtml(alert.target_alias)}</u>`)
+    lines.push(`Время: ${alert.timestamp.toISOString()}`)
 
-  return lines.join("\n")
+    if (alert.description) {
+      lines.push("")
+      lines.push(`ℹ️ <i>${escapeHtml(alert.description)}</i>`)
+    }
+
+    return lines.join("\n")
+  },
+
+  actionsList: "Выберите сценарий:",
+  viewsList: "Выберите представление:",
+
+  runAction: "Запустить сценарий",
+  suggestedActions: "Рекомендуемые сценарии:",
+  actionRunning: "Сценарий выполняется... ⏳",
+  actionSuccess: "Сценарий выполнен ✅",
+  actionError: "Ошибка выполнения сценария ❌",
+
+  noTargetDbs: "Не найдено ни одной базы данных",
+
+  chooseTargetDbForAction: (action: Action) => {
+    let message = `Сценарий "<b>${escapeHtml(action.title)}</b>"`
+
+    if (action.description) {
+      message += `\n\nℹ️ <i>${escapeHtml(action.description)}</i>`
+    }
+
+    message += "\n\nВыберите базу данных:"
+
+    return message
+  },
+
+  runActionConfirm: (action: Action, targetDbId: string) => {
+    return `Запустить сценарий "<b>${escapeHtml(action.title)}</b>" для базы данных <u>${escapeHtml(targetDbId)}</u>?`
+  },
+
+  chooseTargetDbForView: (view: View) => {
+    let message = `Представление "<b>${escapeHtml(view.title)}</b>"`
+
+    if (view.description) {
+      message += `\n\nℹ️ <i>${escapeHtml(view.description)}</i>`
+    }
+
+    message += "\n\nВыберите базу данных:"
+
+    return message
+  },
 }
-
-export const actionsList = "Выберите сценарий:"
-export const viewsList = "Выберите представление:"
-
-export const suggestedActions = "Рекомендуемые действия:"

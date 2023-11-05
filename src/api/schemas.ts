@@ -16,6 +16,7 @@ export type GetActionParams = {
 
 export type RunActionParams = {
   actionId: string
+  targetDbId: string
   arguments?: Record<string, any>
 }
 
@@ -27,6 +28,10 @@ export const ZView = z.object({
 export type View = z.infer<typeof ZView>
 
 export const ZGetViewsResult = z.array(ZView)
+
+export type GetViewParams = {
+  id: string
+}
 
 export const ZAlertDelivery = z.object({
   alert_id: z.number(),
@@ -57,6 +62,7 @@ export const ZAlert = z.object({
   id: z.number(),
   alias: z.string(),
   title: z.string(),
+  target_alias: z.string(),
   description: z.string(),
   timestamp: z.coerce.date(),
   status: ZAlertStatus,
@@ -70,3 +76,5 @@ export type MarkAlertDeliveredParams = {
   alertId: number
   receiversTelegramIds: number[]
 }
+
+export const ZGetTargetDbsResult = z.array(z.string())

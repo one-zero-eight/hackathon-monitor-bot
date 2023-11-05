@@ -2,14 +2,15 @@ import type { Bot } from "grammy"
 
 import type { AlertDelivery, MonitoringApi } from "./api"
 import sleepMs from "./utils/sleepMs"
-import * as msg from "./bot/messages"
-import { sendActionsMessage } from "./bot"
+import { messages } from "./bot/messages"
+import { sendActionsMessage } from "./bot/sendActionsMessage"
 import type { Logger } from "./logger"
+import type { Ctx } from "./bot/context"
 
 export type StartAlertsDeliveryOptions = {
   logger: Logger
   api: MonitoringApi
-  bot: Bot
+  bot: Bot<Ctx>
   alertsPerSecond: number
   noAlertsIntervalMs: number
   errorRetryIntervalMs: number
@@ -42,7 +43,7 @@ export async function startAlertDelivery({
         try {
           await bot.api.sendMessage(
             delivery.receiver_id,
-            msg.alert(alert),
+            messages.alert(alert),
           )
           sent = true
         } catch (err) {
@@ -62,10 +63,11 @@ export async function startAlertDelivery({
             )
             if (actionsToSuggest.length > 0) {
               await sendActionsMessage({
-                messageText: msg.suggestedActions,
+                messageText: messages.suggestedActions,
                 botApi: bot.api,
                 chatId: delivery.receiver_id,
                 actions: actionsToSuggest,
+                targetDbId: alert.target_alias,
               })
             }
           }
