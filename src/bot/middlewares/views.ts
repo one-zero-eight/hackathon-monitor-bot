@@ -14,6 +14,7 @@ composer.command("views", async (ctx) => {
 })
 
 composer.callbackQuery("views", async (ctx) => {
+  ctx.answerCallbackQuery()
   await sendViews({
     ctx,
     chatId: ctx.callbackQuery.from.id,
