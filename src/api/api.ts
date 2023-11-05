@@ -18,6 +18,7 @@ import {
   ZGetAlertDeliveriesResult,
   ZGetTargetDbsResult,
   ZGetViewsResult,
+  ZRunActionResults,
   ZView,
 } from "./schemas"
 import type { Logger } from "@/logger"
@@ -62,6 +63,7 @@ export class MonitoringApi {
       path: `actions/execute/${params.actionId}?target_alias=${params.targetDbId}`,
       data: params.arguments ?? {},
       method: "POST",
+      resultSchema: ZRunActionResults,
     })
   }
 

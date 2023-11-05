@@ -41,8 +41,16 @@ export const messages = {
   runAction: "Запустить сценарий",
   suggestedActions: "Рекомендуемые сценарии:",
   actionRunning: "Сценарий выполняется... ⏳",
-  actionSuccess: "Сценарий выполнен ✅",
-  actionError: "Ошибка выполнения сценария ❌",
+  actionSuccess: (detail?: string) => {
+    if (detail) {
+      return `Сценарий выполнен успешно ✅\n\n<i>${escapeHtml(detail)}</i>`
+    } else {
+      return "Сценарий выполнен успешно ✅"
+    }
+  },
+  actionError: (detail?: string) => {
+    return `Ошибка выполнения сценария ❌\n\n<i>${escapeHtml(detail ?? "Неизвестная ошибка")}</i>`
+  },
 
   noTargetDbs: "Не найдено ни одной базы данных",
 

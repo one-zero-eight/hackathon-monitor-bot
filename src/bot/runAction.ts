@@ -14,20 +14,23 @@ export async function runAction({
   const statusMessage = await ctx.reply(ctx.messages.actionRunning)
 
   let ok
+  let detail
   try {
-    await ctx.monitoring.runAction({
+    const result = await ctx.monitoring.runAction({
       actionId,
       targetDbId,
       arguments: args,
     })
-    ok = true
+    ok = result.success
+    detail = result.detail
   } catch (err) {
+    ok = false
     ctx.logger.error("Failed to run action:", err)
   }
 
   const messageText = ok
-    ? ctx.messages.actionSuccess
-    : ctx.messages.actionError
+    ? ctx.messages.actionSuccess(detail ?? undefined)
+    : ctx.messages.actionError(detail ?? undefined)
   await ctx.api.editMessageText(
     statusMessage.chat.id,
     statusMessage.message_id,

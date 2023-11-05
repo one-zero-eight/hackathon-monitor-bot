@@ -20,6 +20,11 @@ export type RunActionParams = {
   arguments?: Record<string, any>
 }
 
+export const ZRunActionResults = z.object({
+  success: z.boolean(),
+  detail: z.string().nullish(),
+})
+
 export const ZView = z.object({
   alias: z.string(),
   title: z.string(),
