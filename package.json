@@ -7,7 +7,8 @@
   "keywords": [],
   "scripts": {
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@grammyjs/parse-mode": "^1.8.1",
